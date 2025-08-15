@@ -52,13 +52,16 @@ export class AppService {
     }
 
     for (const appt of appointments) {
-      console.log("now--------------> ", now)
-      console.log("db -----------> ",appt.appointmentDate)
-const appointmentDateTime = dayjs.tz(appt.appointmentDate, 'Europe/Brussels');
-      console.log("appointment date and time ", appointmentDateTime)
+      console.log('now--------------> ', now);
+      console.log('db -----------> ', appt.appointmentDate);
+      const appointmentDateTime = dayjs.tz(
+        appt.appointmentDate,
+        'Europe/Brussels',
+      );
+      console.log('appointment date and time ', appointmentDateTime);
       const sendTime = appointmentDateTime.add(2, 'hours');
 
-      console.log("send----------------------->",sendTime)
+      console.log('send----------------------->', sendTime);
 
       if (now.isAfter(sendTime)) {
         await this.sendSMS(appt, 'initial');
@@ -97,13 +100,12 @@ const appointmentDateTime = dayjs.tz(appt.appointmentDate, 'Europe/Brussels');
     }
 
     for (const appt of followUps) {
-      const followUpTime = dayjs.utc(appt.appointmentDate).tz('Europe/Brussels')
-
+      const followUpTime = dayjs.tz(appt.appointmentDate, 'Europe/Brussels');
 
       const sendtime = followUpTime.add(24, 'hours');
 
       if (now.isAfter(sendtime)) {
-        console.log("EMAIL SENT ------------------------->  >> > > > > > > >")
+        console.log('EMAIL SENT ------------------------->  >> > > > > > > >');
         await this.sendSMS(appt, 'follow-up');
         await this.supabase
           .from('Appointment')
@@ -121,7 +123,7 @@ const appointmentDateTime = dayjs.tz(appt.appointmentDate, 'Europe/Brussels');
     targetTime: dayjs.Dayjs,
     now: dayjs.Dayjs,
   ) {
-    console.log(targetTime)
+    console.log(targetTime);
     const diffMs = targetTime.diff(now);
     const minutes = Math.floor(diffMs / 60000);
     const seconds = Math.floor((diffMs % 60000) / 1000);
