@@ -60,7 +60,7 @@ export class AppService {
       const appointmentDateTime = dayjs(appt.appointmentDate)
 
       console.log("appointment date and time ", appointmentDateTime)
-      const sendTime = appointmentDateTime.add(2, 'hours');
+      const sendTime = appointmentDateTime.add(1, 'hours');
 
       console.log("send----------------------->",sendTime)
       console.log("appointmentDateTimeTest-------------->", appointmentDateTimeTest )
