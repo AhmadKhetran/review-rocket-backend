@@ -54,7 +54,7 @@ export class AppService {
     for (const appt of appointments) {
       console.log("now--------------> ", now)
       console.log("db -----------> ",appt.appointmentDate)
-      const appointmentDateTime = dayjs.utc(appt.appointmentDate).tz('Europe/London');
+      const appointmentDateTime = dayjs(appt.appointmentDate).tz('Europe/London');
 
       console.log("appointment date and time ", appointmentDateTime)
       const sendTime = appointmentDateTime.add(2, 'hours');
