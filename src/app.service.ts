@@ -32,7 +32,7 @@ export class AppService {
   async checkScheduledAppointments() {
     this.logger.log('Checking appointments for initial sms...');
 
-    const now = dayjs().tz('Europe/Brussels');
+    const now = dayjs().tz('Europe/London');
 
     const { data: appointments, error } = await this.supabase
       .from('Appointment')
@@ -55,10 +55,10 @@ export class AppService {
     for (const appt of appointments) {
       console.log("now--------------> ", now)
       console.log("db -----------> ",appt.appointmentDate)
-      const appointmentDateTime = dayjs(appt.appointmentDate).tz('Europe/Brussels')
+      const appointmentDateTime = dayjs.utc(appt.appointmentDate).tz('Europe/London')
 
       console.log("appointment date and time ", appointmentDateTime)
-      const sendTime = appointmentDateTime.add(1, 'hours');
+      const sendTime = appointmentDateTime.add(2, 'hours');
 
       console.log("send----------------------->",sendTime)
 
@@ -99,7 +99,8 @@ export class AppService {
     }
 
     for (const appt of followUps) {
-      const followUpTime = dayjs(appt.appointmentDate);
+      const followUpTime = dayjs.utc(appt.appointmentDate).tz('Europe/London')
+
 
       const sendtime = followUpTime.add(24, 'hours');
 
