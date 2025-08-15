@@ -55,9 +55,7 @@ export class AppService {
     for (const appt of appointments) {
       console.log("now--------------> ", now)
       console.log("db -----------> ",appt.appointmentDate)
-      const appointmentDateTime = dayjs(appt.appointmentDate).tz(
-        'Europe/Brussels',
-      );
+      const appointmentDateTime = dayjs(appt.appointmentDate)
 
       console.log("appointment date and time ", appointmentDateTime)
       const sendTime = appointmentDateTime.add(2, 'hours');
@@ -99,7 +97,7 @@ export class AppService {
     }
 
     for (const appt of followUps) {
-      const followUpTime = dayjs(appt.appointmentDate).tz('Europe/Brussels');
+      const followUpTime = dayjs(appt.appointmentDate);
 
       const sendtime = followUpTime.add(24, 'hours');
 
