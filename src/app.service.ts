@@ -5,6 +5,7 @@ import utc from 'dayjs/plugin/utc';
 import sgMail from '@sendgrid/mail';
 import timezone from 'dayjs/plugin/timezone';
 import { ConfigService } from '@nestjs/config';
+import { Twilio } from 'twilio';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -13,27 +14,25 @@ dayjs.extend(timezone);
 export class AppService {
   private supabase: SupabaseClient;
   private readonly logger = new Logger(AppService.name);
+  private twilioClient: Twilio;
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SB');
     const supabaseKey = this.configService.get<string>('SBB');
+    this.twilioClient = new Twilio(
+      this.configService.get('TWILIO_ACCOUNT_SID'),
+      this.configService.get('TWILIO_AUTH_TOKEN'),
+    );
     const sendgrid = this.configService.get<string>('SEND_G');
-
 
     this.supabase = createClient(supabaseUrl, supabaseKey);
 
     sgMail.setApiKey(sendgrid);
   }
-
-  /**
-   * Sends first email 5 min after appointment
-   */
-
-  ConfigService;
   async checkScheduledAppointments() {
-    this.logger.log('Checking appointments for initial emails...');
+    this.logger.log('Checking appointments for initial sms...');
 
-    const now = dayjs().tz('Asia/Karachi');
+    const now = dayjs().tz('Europe/Brussels');
 
     const { data: appointments, error } = await this.supabase
       .from('Appointment')
@@ -41,25 +40,30 @@ export class AppService {
         `
         *,
         merchant:Merchant (
-          email
+          email,
+          merchantName
         )
         `,
       )
       .is('smsSendAt', null);
 
     if (error) {
-      this.logger.error(`Supabase error: ${error.message}`);
+      this.logger.error(`SupaBase error: ${error.message}`);
       return;
     }
 
     for (const appt of appointments) {
+      console.log("now--------------> ", now)
+      console.log("db -----------> ",appt.appointmentDate)
       const appointmentDateTime = dayjs(appt.appointmentDate).tz(
-        'Asia/Karachi',
+        'Europe/Brussels',
       );
+
+      console.log("appointment date and time ", appointmentDateTime)
       const sendTime = appointmentDateTime.add(2, 'hours');
 
       if (now.isAfter(sendTime)) {
-        await this.sendEmail(appt, 'initial');
+        await this.sendSMS(appt, 'initial');
         await this.supabase
           .from('Appointment')
           .update({ smsSendAt: now.toISOString() })
@@ -70,24 +74,21 @@ export class AppService {
     }
   }
 
-  /**
-   * Sends follow-up email 10 min after first email if not opened
-   */
   async checkFollowUpEmails() {
-    this.logger.log('Checking appointments for follow-up emails...');
-
-    const now = dayjs().tz('Asia/Karachi');
-
+    this.logger.log('Checking appointments for follow-up sms...');
+    const now = dayjs().tz('Europe/Brussels');
     const { data: followUps, error } = await this.supabase
       .from('Appointment')
       .select(
         `
         *,
         merchant:Merchant (
-          email
+          email,
+          merchantName
         )
         `,
       )
+
       .not('smsSendAt', 'is', null) // first email sent
       .is('smsOpenedAt', null) // not opened
       .is('followUpSent', null); // follow-up not sent yet
@@ -97,19 +98,14 @@ export class AppService {
       return;
     }
 
-    console.log(followUps);
-
     for (const appt of followUps) {
-      const followUpTime = dayjs(appt.appointmentDate).tz('Asia/Karachi');
+      const followUpTime = dayjs(appt.appointmentDate).tz('Europe/Brussels');
 
       const sendtime = followUpTime.add(24, 'hours');
 
-      console.log(appt.smsSendAt);
-      console.log('follow up time', followUpTime);
-      console.log(now);
-
       if (now.isAfter(sendtime)) {
-        await this.sendEmail(appt, 'follow-up');
+        console.log("EMAIL SENT ------------------------->  >> > > > > > > >")
+        await this.sendSMS(appt, 'follow-up');
         await this.supabase
           .from('Appointment')
           .update({ followUpSent: now.toISOString() })
@@ -119,6 +115,59 @@ export class AppService {
       }
     }
   }
+
+  private logTimeRemaining(
+    type: string,
+    id: string,
+    targetTime: dayjs.Dayjs,
+    now: dayjs.Dayjs,
+  ) {
+    const diffMs = targetTime.diff(now);
+    const minutes = Math.floor(diffMs / 60000);
+    const seconds = Math.floor((diffMs % 60000) / 1000);
+
+    this.logger.log(
+      `⏳ ${type} email for appointment ${id} will be sent in ${minutes} min ${seconds} sec.`,
+    );
+  }
+
+  async sendSMS(appt: any, type: 'initial' | 'follow-up') {
+    console.log('appt', appt);
+    console.log('R', this.configService.get<string>('TWILIO_PHONE_NUMBER'));
+    this.logger.log(
+      `📧 Sending ${type} email for appointment ${appt.id} to ${appt.phoneNumber}...`,
+    );
+
+    try {
+      let body;
+      if (type === 'initial') {
+        body = `Hi ${appt.customerName},
+Thanks for visiting ${appt.merchant.merchantName} today!
+We’d love your quick feedback, it only takes a tap:
+https://reviewrockets.co.uk/review?id=${appt.id}`;
+      } else {
+        body = `Hi ${appt.customerName},
+Just a gentle nudge from ${appt.merchant.merchantName},
+if you’ve got a second, we’d really value your feedback:
+https://reviewrockets.co.uk/review?id=${appt.id}
+Thank you.`;
+      }
+      return this.twilioClient.messages.create({
+        body,
+        from: this.configService.get<string>('TWILIO_PHONE_NUMBER'),
+        to: appt.phoneNumber,
+      });
+    } catch (err) {
+      console.error(err);
+      this.logger.error(
+        `❌ Failed to send ${type} sms for ${appt.id}: ${
+          err.response?.body || err.message
+        }`,
+      );
+    }
+  }
+
+  //  -----------------------------------------
 
   private async sendEmail(appt: any, type: 'initial' | 'follow-up') {
     const fe_url = this.configService.get<string>('FE_URL');
@@ -147,20 +196,5 @@ export class AppService {
         }`,
       );
     }
-  }
-
-  private logTimeRemaining(
-    type: string,
-    id: string,
-    targetTime: dayjs.Dayjs,
-    now: dayjs.Dayjs,
-  ) {
-    const diffMs = targetTime.diff(now);
-    const minutes = Math.floor(diffMs / 60000);
-    const seconds = Math.floor((diffMs % 60000) / 1000);
-
-    this.logger.log(
-      `⏳ ${type} email for appointment ${id} will be sent in ${minutes} min ${seconds} sec.`,
-    );
   }
 }
