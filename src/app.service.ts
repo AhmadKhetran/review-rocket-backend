@@ -60,6 +60,8 @@ export class AppService {
       console.log("appointment date and time ", appointmentDateTime)
       const sendTime = appointmentDateTime.add(2, 'hours');
 
+      console.log("send-----------------------> time",sendTime)
+
       if (now.isAfter(sendTime)) {
         await this.sendSMS(appt, 'initial');
         await this.supabase
@@ -120,12 +122,13 @@ export class AppService {
     targetTime: dayjs.Dayjs,
     now: dayjs.Dayjs,
   ) {
+    console.log(targetTime)
     const diffMs = targetTime.diff(now);
     const minutes = Math.floor(diffMs / 60000);
     const seconds = Math.floor((diffMs % 60000) / 1000);
 
     this.logger.log(
-      `⏳ ${type} email for appointment ${id} will be sent in ${minutes} min ${seconds} sec.`,
+      `⏳ ${type} sms for appointment ${id} will be sent in ${minutes} min ${seconds} sec.`,
     );
   }
 
