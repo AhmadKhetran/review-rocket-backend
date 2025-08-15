@@ -55,12 +55,15 @@ export class AppService {
     for (const appt of appointments) {
       console.log("now--------------> ", now)
       console.log("db -----------> ",appt.appointmentDate)
+      const appointmentDateTimeTest = dayjs(appt.appointmentDate).tz('Europe/Brussels')
+
       const appointmentDateTime = dayjs(appt.appointmentDate)
 
       console.log("appointment date and time ", appointmentDateTime)
       const sendTime = appointmentDateTime.add(2, 'hours');
 
-      console.log("send-----------------------> time",sendTime)
+      console.log("send----------------------->",sendTime)
+      console.log("appointmentDateTimeTest-------------->", appointmentDateTimeTest )
 
       if (now.isAfter(sendTime)) {
         await this.sendSMS(appt, 'initial');
