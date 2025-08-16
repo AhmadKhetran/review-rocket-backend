@@ -37,19 +37,23 @@ export class AppService {
       .from('Appointment')
       .select(
         `
-        *,
-        merchant:Merchant (
-          email,
-          merchantName
-        )
-        `,
+    *,
+    merchant:Merchant!inner (
+      email,
+      merchantName,
+      active
+    )
+  `,
       )
-      .is('smsSendAt', null);
+      .is('smsSendAt', null)
+      .eq('Merchant.active', true);
 
     if (error) {
       this.logger.error(`SupaBase error: ${error.message}`);
       return;
     }
+
+    console.log('appointments: -----', appointments);
 
     for (const appt of appointments) {
       console.log('now--------------> ', now);
@@ -79,20 +83,18 @@ export class AppService {
     this.logger.log('Checking appointments for follow-up sms...');
     const now = dayjs().tz('Europe/Brussels');
     const { data: followUps, error } = await this.supabase
-      .from('Appointment')
-      .select(
-        `
-        *,
-        merchant:Merchant (
-          email,
-          merchantName
-        )
-        `,
-      )
-
-      .not('smsSendAt', 'is', null) // first email sent
-      .is('smsOpenedAt', null) // not opened
-      .is('followUpSent', null); // follow-up not sent yet
+  .from('Appointment')
+  .select(`
+    *,
+    merchant:Merchant!inner (
+      email,
+      merchantName
+    )
+  `)
+  .not('smsSendAt', 'is', null) // First email sent
+  .is('smsOpenedAt', null)      // Not opened
+  .is('followUpSent', null)     // Follow-up not sent
+  .eq('Merchant.active', true); // Only for active merchants
 
     if (error) {
       this.logger.error(`Supabase error: ${error.message}`);
